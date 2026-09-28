@@ -11,6 +11,9 @@
   .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .sub { color: #666; font-size: 14px; margin: 0 0 16px; line-height: 1.6; }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .keys span { display: inline-flex; align-items: center; gap: 4px; }
+  kbd { font-family: inherit; font-size: 13px; background: #fff; border: 1px solid #ccc; border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; color: #333; }
   .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 16px; }
   .card h2 { font-size: 16px; margin: 0 0 10px; }
   input[type=text], textarea { width: 100%; font: inherit; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
@@ -45,6 +48,7 @@
     width: 100%; text-align: center; line-height: 1.35; font-weight: 500; color: #111;
     word-break: keep-all; overflow-wrap: break-word; text-wrap: balance; white-space: pre-line;
   }
+  .slide-text .hl { color: #dc2626; }
 
   /* PDF(인쇄)용 */
   #printArea { position: absolute; left: -100000px; top: 0; }
@@ -62,8 +66,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>한 줄 슬라이드</h1>
-  <p class="sub">한 줄에 한 장씩 큰 글씨로 보여줍니다. 클릭 · 스페이스바 · → 로 다음 장, ← 로 이전 장, Esc 로 종료.</p>
+  <h1>1줄 1장 PPT</h1>
+  <p class="sub keys"><span><kbd>클릭</kbd><kbd>Space</kbd><kbd>→</kbd> 다음</span><span><kbd>←</kbd> 이전</span><span><kbd>Esc</kbd> 종료</span></p>
 
   <div class="card">
     <h2>내용 입력</h2>
@@ -72,7 +76,11 @@
     <textarea id="text" placeholder="전자를 얻으면 띠는 전기
 전자를 잃으면 띠는 전기
 같은 종류의 전기끼리 작용하는 힘"></textarea>
-    <p class="help">· 한 줄 = 한 페이지 (빈 줄은 무시)<br>· 줄바꿈은 화면에 맞게 자동으로 됩니다. 원하는 위치에서 직접 바꾸려면 <code>//</code> 를 넣으세요. 예) <code>전자를 얻으면 // 띠는 전기</code></p>
+    <div class="row" style="margin-top:6px">
+      <button id="btnHl" style="color:#dc2626;font-weight:700">강조</button>
+      <span style="font-size:13px;color:#666">글자를 드래그한 뒤 누르면 빨간색 강조 (다시 누르면 해제)</span>
+    </div>
+    <p class="help">· 줄바꿈 위치를 직접 바꾸려면 <code>//</code> 를 넣으세요. 예) <code>전자를 얻으면 // 띠는 전기</code></p>
     <div class="row">
       <label class="chk"><input type="checkbox" id="shuffle"> 순서 섞기</label>
       <span class="count" id="count">0장</span>
@@ -93,7 +101,7 @@
       <button id="btnImport">백업 파일 불러오기</button>
       <input type="file" id="importFile" accept=".json,application/json" hidden>
     </div>
-    <p class="help">저장 내용은 이 브라우저(이 컴퓨터)에만 보관됩니다. 다른 컴퓨터에서 쓰거나 인터넷 기록 삭제에 대비하려면 백업 파일을 내보내 두세요.</p>
+    <p class="help">다른 컴퓨터에서 쓰거나 인터넷 기록 삭제에 대비하려면 백업 파일을 내보내 두세요.</p>
   </div>
 </div>
 
@@ -177,7 +185,8 @@ $('btnExport').onclick = () => {
   const blob = new Blob([JSON.stringify(loadSets(), null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = '한줄슬라이드_백업_' + new Date().toISOString().slice(0, 10) + '.json';
+  const fname = $('title').value.trim().replace(/[\\/:*?"<>|]/g, '_');
+  a.download = (fname || '한줄슬라이드_백업_' + new Date().toISOString().slice(0, 10)) + '.json';
   a.click();
   URL.revokeObjectURL(a.href);
 };
@@ -211,6 +220,17 @@ function parseLines(text) {
 }
 function fmt(line) {
   return line.split('//').map(s => s.trim()).join('\n');
+}
+/* *강조* 부분을 빨간 글씨로 표시 */
+function render(el, line) {
+  const parts = fmt(line).split('*');
+  if (parts.length % 2 === 0) { const last = parts.pop(); parts[parts.length - 1] += '*' + last; }
+  el.textContent = '';
+  parts.forEach((p, i) => {
+    if (!p) return;
+    if (i % 2 === 1) { const s = document.createElement('span'); s.className = 'hl'; s.textContent = p; el.appendChild(s); }
+    else el.appendChild(document.createTextNode(p));
+  });
 }
 function shuffled(arr) {
   const a = arr.slice();
@@ -262,7 +282,7 @@ function show() {
     slideText.textContent = '끝\n' + elapsedSec().toFixed(1) + '초';
     slideText.style.color = '';
   } else {
-    slideText.textContent = fmt(deck[idx]);
+    render(slideText, deck[idx]);
     slideText.style.color = '';
   }
   updateCounter();
@@ -323,7 +343,7 @@ $('btnPdf').onclick = async () => {
   items.forEach(t => {
     const p = document.createElement('div'); p.className = 'pslide';
     const b = document.createElement('div'); b.className = 'box';
-    const s = document.createElement('div'); s.className = 'slide-text'; s.textContent = fmt(t);
+    const s = document.createElement('div'); s.className = 'slide-text'; render(s, t);
     b.appendChild(s); p.appendChild(b); area.appendChild(p);
   });
   area.querySelectorAll('.pslide').forEach(p => fit(p.querySelector('.slide-text'), p.querySelector('.box')));
@@ -331,6 +351,27 @@ $('btnPdf').onclick = async () => {
   if ($('title').value.trim()) document.title = $('title').value.trim();
   window.print();
   document.title = oldTitle;
+};
+
+/* ---------- 강조 버튼 ---------- */
+$('btnHl').addEventListener('mousedown', e => e.preventDefault()); // 버튼 클릭 시 선택 영역 유지
+$('btnHl').onclick = () => {
+  const ta = $('text');
+  let st = ta.selectionStart, en = ta.selectionEnd;
+  if (st === en) { alert('강조할 글자를 먼저 드래그해서 선택하세요.'); return; }
+  const v = ta.value;
+  let sel = v.slice(st, en);
+  let rep;
+  if (v[st - 1] === '*' && v[en] === '*') {            // 바깥에 * 가 있으면 해제
+    st--; en++; rep = sel;
+  } else if (sel.length > 2 && sel.startsWith('*') && sel.endsWith('*')) { // 선택 안에 * 가 있으면 해제
+    rep = sel.slice(1, -1);
+  } else {                                              // 강조 (줄마다 따로 감싸기)
+    rep = sel.split('\n').map(s => s.trim() ? '*' + s + '*' : s).join('\n');
+  }
+  ta.focus();
+  ta.setRangeText(rep, st, en, 'select');
+  updateCount(); saveDraft();
 };
 
 /* ---------- 초기화 ---------- */
