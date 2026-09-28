@@ -173,6 +173,7 @@ $('btnNew').onclick = () => {
 };
 
 $('btnExport').onclick = () => {
+  if (!loadSets().length) { alert('저장된 내용이 없습니다.\n제목을 쓰고 [저장] 버튼을 먼저 누른 뒤 내보내기 하세요.'); return; }
   const blob = new Blob([JSON.stringify(loadSets(), null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
